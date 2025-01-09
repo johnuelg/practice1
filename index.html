@@ -19,7 +19,7 @@
 <div id="main-wrapper">
 	<div id="sidebar">
         <div>
-		    <div id="current_time">0 months</div>
+		    <div id="current_time">0 minute</div>
 		</div>
         
 	    <div id="speed">
@@ -68,19 +68,11 @@ var sched_objs = [],
 	curr_index = -1;
 
 
-// var foci = {
-//     "met" : { x: x(1), y: y(1), grp: "met" },
-//     "romantic" : { x: x(2), y: y(1), grp: "romantic" },
-//     "lived" : { x: x(3), y: y(1), grp: "lived" },
-//     "married" : { x: x(4), y: y(1), grp: "married" },
-// }
-
-
 var grpcnts = {
-    met: { '1960': 0, '1970': 0, '2010': 0, label: "First Met", x: 1, y: 1 },
-    romantic: { '1960': 0, '1970': 0, '2010': 0, label: "Romantic", x: 2, y: 1 },
-    lived: { '1960': 0, '1970': 0, '2010': 0, label: "Live Together", x: 3, y: 1 },
-    married: { '1960': 0, '1970': 0, '2010': 0, label: "Married", x: 4, y: 3 },
+    met: { '1960': 0, '1970': 0, '2010': 0, label: "Registration", x: 1, y: 1 },
+    romantic: { '1960': 0, '1970': 0, '2010': 0, label: "Door Doctor", x: 2, y: 1 },
+    lived: { '1960': 0, '1970': 0, '2010': 0, label: "Doctor Decision", x: 3, y: 1 },
+    married: { '1960': 0, '1970': 0, '2010': 0, label: "Disposition", x: 4, y: 3 },
 }
 
 
@@ -106,7 +98,7 @@ var svg = d3.select("#chart").append("svg")
 
 
 // Load data and let's do it.
-d3.tsv("data/timelines.tsv", function(error, data) {	
+d3.csv("data/bb.csv", function(error, data) {	
 	
 	data.forEach(function(d) {
 		var day_array = d.timeline.split(",");
@@ -121,32 +113,27 @@ d3.tsv("data/timelines.tsv", function(error, data) {
 	});
 	
 	
-	// A node for each person's schedule
-	var nodes = sched_objs.map(function(o,i) {
-		
-        var act = o[0].act;
-		var init_x = x(+data[i].decade) + Math.random();
-		var init_y = y('met') + Math.random();
-        var col = "#cccccc";
-        
-        grpcnts[act][data[i].decade] += 1;
-        // grpcnts['met'][data[i].decade] += 1;
-        
-		return {
-            act: act,
-            // act: 'met',
-			radius: maxRadius,
-			x: init_x,
-			y: init_y,
-            decade: data[i].decade,
-			color: color(act),
-            married: false,
-			moves: 0,
-            // next_move_time: 0,
-            next_move_time: o[0].duration,
-			sched: o,
-		}
-	});
+	//// Update the node creation to use decade-based coloring
+var nodes = sched_objs.map(function(o,i) {
+    var act = o[0].act;
+    var init_x = x(+data[i].decade) + Math.random();
+    var init_y = y('met') + Math.random();
+    
+    grpcnts[act][data[i].decade] += 1;
+    
+    return {
+        act: act,
+        radius: maxRadius,
+        x: init_x,
+        y: init_y,
+        decade: data[i].decade,
+        color: color(data[i].decade), // Set color based on decade
+        married: false,
+        moves: 0,
+        next_move_time: o[0].duration,
+        sched: o,
+    }
+});
 
 
     // Separator line.
@@ -191,7 +178,7 @@ d3.tsv("data/timelines.tsv", function(error, data) {
         .attr('y', -margin.top)
         .attr('dy', '1.8em')
         .attr("text-anchor", "middle")
-        .text(d => d + "s");
+        .text(d => d === 1970 ? "Urgent" : "Non-Urgent");
         
     
 	// Activity group labels
@@ -235,7 +222,7 @@ d3.tsv("data/timelines.tsv", function(error, data) {
     
     var pymChild = new pym.Child();
     
-        
+       
         
 
 	// Update nodes based on activity and duration
@@ -305,41 +292,35 @@ d3.tsv("data/timelines.tsv", function(error, data) {
 	
 	
 		
-	function tick(e) {
-	  var k = 0.03 * e.alpha;
-  
-	  // Push nodes toward their designated focus.
-	  nodes.forEach(function(o, i) {
-		var curr_act = o.act;
-		
-		// Speed of movement change based on user speed.
+// Update the force layout tick function
+function tick(e) {
+    var k = 0.03 * e.alpha;
+
+    nodes.forEach(function(o, i) {
+        var curr_act = o.act;
+        
         if (USER_SPEED == "slow") var damper = .85;
         else var damper = 1;
         
-        
         o.x += (x(+o.decade) - o.x) * k * damper;
         
-        // If starting at the beginning.
         if (curr_index < 0) {
             o.y += (y('met') - o.y) * k * damper;
-            o.color = color('met');
-        } 
-        
-        // Already started.
-        else {
+        } else {
             o.y += (y(curr_act) - o.y) * k * damper;
-            o.color = color(curr_act);
         }
-        
-	  });
+        // Color remains constant based on decade
+        o.color = color(o.decade);
+    });
 
-	  circle
-	  	  .each(collide(.5))
-          .style("fill", function(d) { return d.color; })
-	      .attr("cx", function(d) { return d.x; })
-	      .attr("cy", function(d) { return d.y; });
-	}
+    
 
+	 circle
+        .each(collide(.5))
+        .style("fill", function(d) { return d.color; })
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+}
 
 	// Resolve collisions between nodes.
 	function collide(alpha) {
@@ -401,71 +382,51 @@ d3.tsv("data/timelines.tsv", function(error, data) {
     
     
     
-    // Reset.
-    function reset() {
-        
-        console.log('reset!');
-        
-        clearTimeout(simtimer);
-        USER_SPEED = "fast";
-        
-        // Reset counts.
-        curr_index = -1;
-        d3.select("#current_time").text(indexToTime(0));
-        d3.keys(grpcnts).forEach(function(d,i) {
-            grpcnts[d]['1970'] = 0;
-            grpcnts[d]['2010'] = 0;
-        });
-        
-        // Reset the nodes.
-        d3.range(nodes.length).map(function(i) {
-            
-            nodes[i].act = nodes[i].sched[0].act;
-            grpcnts[nodes[i].act][nodes[i].decade] += 1;
-            // nodes[i].act = 'met';
-            // grpcnts['met'][nodes[i].decade] += 1;
-            nodes[i].moves = 0;
-            nodes[i].next_move_time = nodes[i].sched[0].duration;
-            
-        });
-        
-        
-        // TODO: Reset the counters.
-        fcntlabel.selectAll("text.cnt").text(d => d == "met" ? "100%" : "0%");
-        mcntlabel.selectAll("text.cnt").text(d => d == "met" ? "100%" : "0%");
-        
-        
-        
-        // Restart the animation.
-        force.resume();
-        USER_SPEED = d3.select("#speed .togglebutton.current").attr("data-val");
-        
-        if (USER_SPEED != 'pause') {
-            simtimer = setTimeout(timer, 3000);
-        } else {
-            // force.resume();
-        }
-        
-        
-    }
+   // Update the reset function to maintain decade-based colors
+function reset() {
+    clearTimeout(simtimer);
+    USER_SPEED = "fast";
     
+    curr_index = -1;
+    d3.select("#current_time").text(indexToTime(0));
+    d3.keys(grpcnts).forEach(function(d,i) {
+        grpcnts[d]['1970'] = 0;
+        grpcnts[d]['2010'] = 0;
+    });
+    
+    d3.range(nodes.length).map(function(i) {
+        nodes[i].act = nodes[i].sched[0].act;
+        grpcnts[nodes[i].act][nodes[i].decade] += 1;
+        nodes[i].moves = 0;
+        nodes[i].next_move_time = nodes[i].sched[0].duration;
+        // Color remains based on decade
+        nodes[i].color = color(nodes[i].decade);
+    });
+    
+    fcntlabel.selectAll("text.cnt").text(d => d == "met" ? "100%" : "0%");
+    mcntlabel.selectAll("text.cnt").text(d => d == "met" ? "100%" : "0%");
+    
+    force.resume();
+    USER_SPEED = d3.select("#speed .togglebutton.current").attr("data-val");
+    
+    if (USER_SPEED != 'pause') {
+        simtimer = setTimeout(timer, 3000);
+    }
+} 
     
     
 }); // @end d3.tsv
 
 
 
-function color(activity) {
-	
-	var colorByActivity = {
-        'met': '#faf88e',
-        'romantic': '#b8e9a4',
-        'lived': '#8ad3ba',
-        'married': '#6fb9d0',
-    }
-	
-	return colorByActivity[activity];
-	
+//Modified color function to return colors based on decade
+function color(decade) {
+    var colorByDecade = {
+        '1970': '#f48077', // red shade
+        '2010': '#9fed7d'  // green shade
+    };
+
+    return colorByDecade[decade] || '#cccccc'; // Default color if decade is not found
 }
 
 
@@ -510,32 +471,35 @@ function minutesToTime(m) {
 
 
 
-function indexToTime(i) {
-    
-    var months = i % 12;
-    var years = Math.floor(i / 12);
+function indexToTime(minutes) {
+    var remainingMinutes = minutes % 60;
+    var hours = Math.floor(minutes / 60);
     
     var time_string = '';
     
-    if (years == 1) {
-        time_string += years + " year";
-    } else if (years > 1) {
-        time_string += years + " years";
+    if (hours == 1) {
+        time_string += hours + " hour";
+    } else if (hours > 1) {
+        time_string += hours + " hours";
     }
     
-    if (years > 0) {
+    if (hours > 0 && remainingMinutes > 0) {
         time_string += ", ";
     }
     
-    if (months == 1) {
-        time_string += "1 month";
-    } else {
-        time_string += months += " months";
+    if (remainingMinutes == 1) {
+        time_string += "1 minute";
+    } else if (remainingMinutes > 0) {
+        time_string += remainingMinutes + " minutes";
+    }
+    
+    // Handle the case when minutes is 0
+    if (minutes === 0) {
+        time_string = "0 minutes";
     }
     
     return time_string;
 }
-
 
 
 
